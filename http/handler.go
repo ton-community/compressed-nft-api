@@ -3,7 +3,6 @@ package http
 import (
 	"encoding/hex"
 	"errors"
-	"math/big"
 	"math/bits"
 	"net/http"
 
@@ -108,8 +107,7 @@ func (h *Handler) getItemInternal(state *state.FullState, index uint64) (*ItemRe
 		return nil, err
 	}
 
-	pfDict := cell.NewDict(NODE_DICT_KEY_LEN)
-
+	nodes := make([]*cell.Builder, 0)
 	nodeIndex := uint64(1<<depth) + index
 	for i := 0; i < depth; i++ {
 		nodeIndex ^= 1
@@ -122,15 +120,20 @@ func (h *Handler) getItemInternal(state *state.FullState, index uint64) (*ItemRe
 			}
 		}
 
-		pfDict.SetIntKey(big.NewInt(int64(i)), cell.BeginCell().MustStoreSlice(node.Hash[:], uint(len(node.Hash))*8).EndCell())
+		nodes = append(nodes, cell.BeginCell().MustStoreSlice(node.Hash[:], 256))
 
 		nodeIndex >>= 1
+	}
+
+	tree := cell.BeginCell().EndCell()
+	for i := len(nodes) - 1; i >= 0; i-- {
+		tree = nodes[i].MustStoreRef(tree).EndCell()
 	}
 
 	return &ItemResponse{
 		Item:      data.NewItemData(index, item),
 		Root:      state.CurrentState.Root,
-		ProofCell: cell.BeginCell().MustStoreUInt(index, 256).MustStoreRef(item.ToCell()).MustStoreRef(pfDict.MustToCell()).EndCell(),
+		ProofCell: cell.BeginCell().MustStoreRef(item.ToCell()).MustStoreRef(tree).EndCell(),
 	}, nil
 }
 
