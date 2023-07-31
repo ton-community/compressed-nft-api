@@ -12,20 +12,14 @@ import (
 	"math/big"
 	"os"
 	"strconv"
-	"strings"
 
 	"github.com/jackc/pgx/v5"
 	"github.com/spf13/cobra"
 	"github.com/ton-community/compressed-nft-api/config"
-	"github.com/ton-community/compressed-nft-api/migrations"
 	"github.com/ton-community/compressed-nft-api/updates"
 	"github.com/xssnick/tonutils-go/address"
 	"github.com/xssnick/tonutils-go/tlb"
 	"github.com/xssnick/tonutils-go/tvm/cell"
-
-	"github.com/golang-migrate/migrate/v4"
-	_ "github.com/golang-migrate/migrate/v4/database/pgx/v5"
-	"github.com/golang-migrate/migrate/v4/source/iofs"
 )
 
 const API_VERSION = 1
@@ -237,25 +231,6 @@ func genupd(cmd *cobra.Command, args []string) error {
 	return nil
 }
 
-func migrateFunc(cmd *cobra.Command, args []string) error {
-	config.LoadConfig()
-
-	d, err := iofs.New(migrations.MigrationsFS, ".")
-	if err != nil {
-		return err
-	}
-
-	m, err := migrate.NewWithSourceInstance("migrations", d, strings.Replace(config.Config.Database, "postgres", "pgx5", 1))
-	if err != nil {
-		return err
-	}
-	defer m.Close()
-
-	m.Up()
-
-	return nil
-}
-
 func add(cmd *cobra.Command, args []string) error {
 	config.LoadConfig()
 
@@ -323,11 +298,6 @@ func main() {
 		Args: cobra.MinimumNArgs(1),
 	}
 
-	var migrateCmd = &cobra.Command{
-		Use:  "migrate",
-		RunE: migrateFunc,
-	}
-
 	var addCmd = &cobra.Command{
 		Use:  "add listfile",
 		Args: cobra.ExactArgs(1),
@@ -335,7 +305,6 @@ func main() {
 	}
 
 	rootCmd.AddCommand(genupdCmd)
-	rootCmd.AddCommand(migrateCmd)
 	rootCmd.AddCommand(addCmd)
 
 	if err := rootCmd.Execute(); err != nil {

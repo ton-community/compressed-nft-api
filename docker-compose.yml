@@ -1,0 +1,19 @@
+version: '3.1'
+
+services:
+  db:
+    image: postgres
+    restart: always
+    environment:
+      POSTGRES_PASSWORD: example
+      POSTGRES_DB: merkleapi
+
+  api:
+    build: ''
+    ports:
+      - 8080:8080
+    env_file: .env
+    volumes:
+      - ./dockerapidata:/apidata
+    depends_on:
+      - db
