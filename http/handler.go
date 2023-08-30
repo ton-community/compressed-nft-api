@@ -18,6 +18,8 @@ import (
 	"github.com/xssnick/tonutils-go/tvm/cell"
 )
 
+const ITEMS_LIMIT = 10000
+
 type Handler struct {
 	StateProvider provider.StateProvider
 	NodeProvider  provider.NodeProvider
@@ -69,8 +71,8 @@ func (h *Handler) getItemsInternal(from uint64, count uint64) (*ItemsResponse, e
 }
 
 type ItemsRequest struct {
-	From  uint64 `param:"from"`
-	Count uint64 `param:"count"`
+	From  uint64 `query:"from"`
+	Count uint64 `query:"count"`
 }
 
 type ItemsResponse struct {
@@ -84,6 +86,15 @@ func (h *Handler) getItems(c echo.Context) error {
 	if err := c.Bind(ir); err != nil {
 		log.Err(err).Msg("bad items request")
 		return c.String(http.StatusBadRequest, "bad request")
+	}
+
+	if ir.Count == 0 {
+		log.Error().Msg("items request has count set to 0")
+		return c.String(http.StatusBadRequest, "bad request")
+	}
+
+	if ir.Count > ITEMS_LIMIT {
+		ir.Count = ITEMS_LIMIT
 	}
 
 	resp, err := h.getItemsInternal(ir.From, ir.Count)
