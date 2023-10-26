@@ -12,10 +12,15 @@ import (
 	"math/big"
 	"os"
 	"strconv"
+	"strings"
 
+	"github.com/golang-migrate/migrate/v4"
+	_ "github.com/golang-migrate/migrate/v4/database/pgx/v5"
+	"github.com/golang-migrate/migrate/v4/source/iofs"
 	"github.com/jackc/pgx/v5"
 	"github.com/spf13/cobra"
 	"github.com/ton-community/compressed-nft-api/config"
+	"github.com/ton-community/compressed-nft-api/migrations"
 	"github.com/ton-community/compressed-nft-api/updates"
 	"github.com/xssnick/tonutils-go/address"
 	"github.com/xssnick/tonutils-go/tlb"
@@ -287,6 +292,40 @@ func add(cmd *cobra.Command, args []string) error {
 	return nil
 }
 
+func doMigrate() error {
+	config.LoadConfig()
+
+	d, err := iofs.New(migrations.MigrationsFS, ".")
+	if err != nil {
+		return err
+	}
+
+	m, err := migrate.NewWithSourceInstance("migrations", d, strings.Replace(config.Config.Database, "postgres", "pgx5", 1))
+	if err != nil {
+		return err
+	}
+
+	err = m.Up()
+	if err != nil && err != migrate.ErrNoChange {
+		return err
+	}
+
+	err1, err2 := m.Close()
+	if err1 != nil {
+		return err1
+	}
+
+	if err2 != nil {
+		return err2
+	}
+
+	return nil
+}
+
+func migr(cmd *cobra.Command, args []string) error {
+	return doMigrate()
+}
+
 func main() {
 	var rootCmd = &cobra.Command{
 		Use: "ctl",
@@ -304,8 +343,14 @@ func main() {
 		RunE: add,
 	}
 
+	var migrateCmd = &cobra.Command{
+		Use:  "migrate",
+		RunE: migr,
+	}
+
 	rootCmd.AddCommand(genupdCmd)
 	rootCmd.AddCommand(addCmd)
+	rootCmd.AddCommand(migrateCmd)
 
 	if err := rootCmd.Execute(); err != nil {
 		os.Exit(1)

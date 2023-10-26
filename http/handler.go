@@ -5,9 +5,11 @@ import (
 	"errors"
 	"math/bits"
 	"net/http"
+	"strconv"
 
 	"github.com/labstack/echo/v4"
 	"github.com/rs/zerolog/log"
+	myaddress "github.com/ton-community/compressed-nft-api/address"
 	"github.com/ton-community/compressed-nft-api/data"
 	"github.com/ton-community/compressed-nft-api/hash"
 	"github.com/ton-community/compressed-nft-api/provider"
@@ -66,7 +68,7 @@ func (h *Handler) getItemsInternal(from uint64, count uint64) (*ItemsResponse, e
 	return &ItemsResponse{
 		Items:     fi,
 		Root:      state.CurrentState.Root,
-		LastIndex: state.CurrentState.LastIndex,
+		LastIndex: strconv.FormatUint(state.CurrentState.LastIndex, 10),
 	}, nil
 }
 
@@ -77,7 +79,7 @@ type ItemsRequest struct {
 
 type ItemsResponse struct {
 	Items     []*data.ItemData `json:"items"`
-	LastIndex uint64           `json:"last_index"`
+	LastIndex string           `json:"last_index"`
 	Root      types.Node       `json:"root"`
 }
 
@@ -184,11 +186,11 @@ func (h *Handler) getItem(c echo.Context) error {
 }
 
 type StateResponse struct {
-	Depth     int              `json:"depth"`
-	Capacity  uint64           `json:"capacity"`
-	LastIndex uint64           `json:"last_index"`
-	Root      types.Node       `json:"root"`
-	Address   *address.Address `json:"address"`
+	Depth     int                `json:"depth"`
+	Capacity  string             `json:"capacity"`
+	LastIndex string             `json:"last_index"`
+	Root      types.Node         `json:"root"`
+	Address   *myaddress.Address `json:"address"`
 }
 
 func (h *Handler) getState(c echo.Context) error {
@@ -199,9 +201,9 @@ func (h *Handler) getState(c echo.Context) error {
 	resp := &StateResponse{
 		Depth:     h.Depth,
 		Root:      state.CurrentState.Root,
-		Capacity:  1 << h.Depth,
-		LastIndex: state.CurrentState.LastIndex,
-		Address:   state.CurrentState.Address.Address,
+		Capacity:  strconv.Itoa(1 << h.Depth),
+		LastIndex: strconv.FormatUint(state.CurrentState.LastIndex, 10),
+		Address:   &myaddress.Address{Address: state.CurrentState.Address.Address},
 	}
 
 	return c.JSON(http.StatusOK, resp)

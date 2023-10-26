@@ -1,6 +1,8 @@
 package data
 
 import (
+	"strconv"
+
 	"github.com/ton-community/compressed-nft-api/address"
 	"github.com/ton-community/compressed-nft-api/types"
 	"github.com/xssnick/tonutils-go/tvm/cell"
@@ -22,13 +24,13 @@ func (d *ItemMetadata) ToNode() types.Node {
 type ItemData struct {
 	Metadata *ItemMetadata `json:"metadata"`
 	DataCell *cell.Cell    `json:"data_cell"`
-	Index    uint64        `json:"index"`
+	Index    string        `json:"index"`
 }
 
 func NewItemData(index uint64, metadata *ItemMetadata) *ItemData {
 	return &ItemData{
 		Metadata: metadata,
 		DataCell: metadata.ToCell(),
-		Index:    index,
+		Index:    strconv.FormatUint(index, 10),
 	}
 }

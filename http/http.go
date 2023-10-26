@@ -10,7 +10,7 @@ func (h *Handler) RegisterHandlers(e *echo.Echo) {
 	v1 := e.Group("/v1")
 
 	v1.GET("/items", h.getItems)
-	v1.GET("/item/:index", h.getItem)
+	v1.GET("/items/:index", h.getItem)
 	v1.GET("/state", h.getState)
 
 	admin := e.Group("/admin")
