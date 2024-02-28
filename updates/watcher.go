@@ -46,7 +46,7 @@ func Watcher(newStates <-chan *types.State, addrs <-chan *address.Address, sh *s
 				continue
 			}
 
-			if !bytes.Equal(rootb, newState.Root.Hash[:]) {
+			if !bytes.Equal(rootb, newState.Root) {
 				continue
 			}
 

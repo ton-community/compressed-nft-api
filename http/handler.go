@@ -80,7 +80,7 @@ type ItemsRequest struct {
 type ItemsResponse struct {
 	Items     []*data.ItemData `json:"items"`
 	LastIndex string           `json:"last_index"`
-	Root      types.Node       `json:"root"`
+	Root      types.NodeHash   `json:"root"`
 }
 
 func (h *Handler) getItems(c echo.Context) error {
@@ -108,8 +108,6 @@ func (h *Handler) getItems(c echo.Context) error {
 	return c.JSON(http.StatusOK, resp)
 }
 
-const NODE_DICT_KEY_LEN = 32
-
 func (h *Handler) getItemInternal(state *state.FullState, index uint64) (*ItemResponse, error) {
 	ip := h.ItemProvider
 	np := h.NodeProvider
@@ -120,7 +118,7 @@ func (h *Handler) getItemInternal(state *state.FullState, index uint64) (*ItemRe
 		return nil, err
 	}
 
-	nodes := make([]*cell.Builder, 0)
+	curNode := item.ToCell()
 	nodeIndex := uint64(1<<depth) + index
 	for i := 0; i < depth; i++ {
 		nodeIndex ^= 1
@@ -133,20 +131,19 @@ func (h *Handler) getItemInternal(state *state.FullState, index uint64) (*ItemRe
 			}
 		}
 
-		nodes = append(nodes, cell.BeginCell().MustStoreSlice(node.Hash[:], 256))
+		if nodeIndex&1 > 0 {
+			curNode = cell.BeginCell().MustStoreRef(curNode).MustStoreRef(node.ToCell()).EndCell()
+		} else {
+			curNode = cell.BeginCell().MustStoreRef(node.ToCell()).MustStoreRef(curNode).EndCell()
+		}
 
 		nodeIndex >>= 1
-	}
-
-	tree := cell.BeginCell().EndCell()
-	for i := len(nodes) - 1; i >= 0; i-- {
-		tree = nodes[i].MustStoreRef(tree).EndCell()
 	}
 
 	return &ItemResponse{
 		Item:      data.NewItemData(index, item),
 		Root:      state.CurrentState.Root,
-		ProofCell: cell.BeginCell().MustStoreRef(item.ToCell()).MustStoreRef(tree).EndCell(),
+		ProofCell: types.MakeMerkleProof(curNode),
 	}, nil
 }
 
@@ -156,7 +153,7 @@ type ItemRequest struct {
 
 type ItemResponse struct {
 	Item      *data.ItemData `json:"item"`
-	Root      types.Node     `json:"root"`
+	Root      types.NodeHash `json:"root"`
 	ProofCell *cell.Cell     `json:"proof_cell"`
 }
 
@@ -189,7 +186,7 @@ type StateResponse struct {
 	Depth     int                `json:"depth"`
 	Capacity  string             `json:"capacity"`
 	LastIndex string             `json:"last_index"`
-	Root      types.Node         `json:"root"`
+	Root      types.NodeHash     `json:"root"`
 	Address   *myaddress.Address `json:"address"`
 }
 
@@ -292,14 +289,14 @@ func (h *Handler) discoverFirst(c echo.Context) error {
 	state := &types.State{
 		LastIndex: itemCount - 1,
 		Version:   version,
-		Root:      root,
+		Root:      root.Hash[:],
 	}
 
 	newStates <- state
 
 	var upd updates.Create
 	upd.Type = "create"
-	upd.Root = hex.EncodeToString(state.Root.Hash[:])
+	upd.Root = hex.EncodeToString(state.Root)
 	upd.Depth = h.Depth
 	upd.LastIndex = state.LastIndex
 
@@ -400,7 +397,7 @@ func (h *Handler) rediscoverFromState(c echo.Context, state *state.FullState) er
 	newState := &types.State{
 		LastIndex: newLastIndex,
 		Version:   newVersion,
-		Root:      root,
+		Root:      root.Hash[:],
 	}
 
 	nodesToUpd := getNodesToUpdate(setNodesFrom, uint64(1<<(depth+1))-1, depth, 1, 0)
@@ -442,7 +439,7 @@ func (h *Handler) rediscoverFromState(c echo.Context, state *state.FullState) er
 
 	var upd updates.Update
 	upd.Type = "update"
-	upd.Root = hex.EncodeToString(newState.Root.Hash[:])
+	upd.Root = hex.EncodeToString(newState.Root)
 	upd.Updates = updatesMap
 	upd.Hashes = prov
 	upd.NewLastIndex = newState.LastIndex

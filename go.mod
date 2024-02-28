@@ -10,7 +10,7 @@ require (
 	github.com/labstack/echo/v4 v4.10.2
 	github.com/rs/zerolog v1.29.1
 	github.com/spf13/cobra v1.7.0
-	github.com/xssnick/tonutils-go v1.7.4
+	github.com/xssnick/tonutils-go v1.8.8
 )
 
 require (

@@ -23,9 +23,10 @@ var _ provider.NodeProvider = (*NodeProvider)(nil)
 
 func (np *NodeProvider) GetNode(index uint64, version int) (types.Node, error) {
 	ctx := context.Background()
-	row := np.pool.QueryRow(ctx, "SELECT hash FROM nodes WHERE index = $1 AND version <= $2 ORDER BY version DESC LIMIT 1", index, version)
+	row := np.pool.QueryRow(ctx, "SELECT hash, depth FROM nodes WHERE index = $1 AND version <= $2 ORDER BY version DESC LIMIT 1", index, version)
 	var hash []byte
-	err := row.Scan(&hash)
+	var depth uint16
+	err := row.Scan(&hash, &depth)
 	if err != nil {
 		if err == pgx.ErrNoRows {
 			return types.Node{}, provider.ErrNodeNotExist
@@ -33,12 +34,12 @@ func (np *NodeProvider) GetNode(index uint64, version int) (types.Node, error) {
 		return types.Node{}, err
 	}
 
-	return types.NewNode(hash), nil
+	return types.NewNode(hash, depth), nil
 }
 
 func (np *NodeProvider) SetNode(index uint64, version int, node types.Node) error {
 	ctx := context.Background()
-	_, err := np.pool.Exec(ctx, "INSERT INTO nodes (index, version, hash) VALUES ($1, $2, $3) ON CONFLICT (index, version) DO UPDATE SET hash = EXCLUDED.hash", index, version, node.Hash[:])
+	_, err := np.pool.Exec(ctx, "INSERT INTO nodes (index, version, hash, depth) VALUES ($1, $2, $3, $4) ON CONFLICT (index, version) DO UPDATE SET hash = EXCLUDED.hash, depth = EXCLUDED.depth", index, version, node.Hash[:], node.CellDepth)
 
 	return err
 }

@@ -1,0 +1,1 @@
+ALTER TABLE nodes ADD COLUMN depth int NOT NULL;

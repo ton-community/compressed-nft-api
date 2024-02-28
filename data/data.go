@@ -18,7 +18,8 @@ func (d *ItemMetadata) ToCell() *cell.Cell {
 }
 
 func (d *ItemMetadata) ToNode() types.Node {
-	return types.NewNode(d.ToCell().Hash())
+	c := d.ToCell()
+	return types.NewNode(c.Hash(), c.Depth())
 }
 
 type ItemData struct {
