@@ -13,11 +13,14 @@ import (
 	"os"
 	"strconv"
 	"strings"
+	"time"
 
+	"github.com/cameo-engineering/tonconnect"
 	"github.com/golang-migrate/migrate/v4"
 	_ "github.com/golang-migrate/migrate/v4/database/pgx/v5"
 	"github.com/golang-migrate/migrate/v4/source/iofs"
 	"github.com/jackc/pgx/v5"
+	"github.com/mdp/qrterminal/v3"
 	"github.com/spf13/cobra"
 	"github.com/ton-community/compressed-nft-api/config"
 	"github.com/ton-community/compressed-nft-api/hash"
@@ -77,6 +80,77 @@ func buildUpdateCell(m map[uint64]updateCellElement, index uint64, depth int) (*
 	oldRight, newRight := buildUpdateCell(m, 2*index+1, depth-1)
 
 	return cell.BeginCell().MustStoreRef(oldLeft).MustStoreRef(oldRight).EndCell(), cell.BeginCell().MustStoreRef(newLeft).MustStoreRef(newRight).EndCell()
+}
+
+func sendMessage(addr string, amount string, body, stateInit *cell.Cell) error {
+	link := fmt.Sprintf("ton://transfer/%v?amount=%v", addr, amount)
+	if body != nil {
+		link += fmt.Sprintf("&bin=%v", base64.RawURLEncoding.EncodeToString(body.ToBOC()))
+	}
+	if stateInit != nil {
+		link += fmt.Sprintf("&init=%v", base64.RawURLEncoding.EncodeToString(stateInit.ToBOC()))
+	}
+	fmt.Printf("ton deeplink:\n%v\n\n", link)
+
+	tcs, err := tonconnect.NewSession()
+	if err != nil {
+		return err
+	}
+
+	connreq, err := tonconnect.NewConnectRequest("https://raw.githubusercontent.com/ton-defi-org/tonconnect-manifest-temp/main/tonconnect-manifest.json")
+	if err != nil {
+		return err
+	}
+
+	deeplink, err := tcs.GenerateDeeplink(*connreq, tonconnect.WithNoneReturnStrategy())
+	if err != nil {
+		return err
+	}
+
+	fmt.Printf("collection address: %v\n\ntonconnect deeplink:\n%v\n\ntonconnect qr code:\n", addr, deeplink)
+	qrterminal.GenerateHalfBlock(deeplink, qrterminal.L, os.Stdout)
+
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Minute)
+	defer cancel()
+
+	wallets := make([]tonconnect.Wallet, 0)
+	for _, wallet := range tonconnect.Wallets {
+		wallets = append(wallets, wallet)
+	}
+
+	_, err = tcs.Connect(ctx, wallets...)
+	if err != nil {
+		return err
+	}
+
+	msg, err := tonconnect.NewMessage(addr, amount)
+	if err != nil {
+		return err
+	}
+
+	if stateInit != nil {
+		msg.StateInit = stateInit.ToBOC()
+	}
+	if body != nil {
+		msg.Payload = body.ToBOC()
+	}
+
+	tx, err := tonconnect.NewTransaction(tonconnect.WithMessage(*msg), tonconnect.WithTimeout(10*time.Minute))
+	if err != nil {
+		return err
+	}
+
+	_, err = tcs.SendTransaction(ctx, *tx)
+	if err != nil {
+		return err
+	}
+
+	err = tcs.Disconnect(ctx)
+	if err != nil {
+		return err
+	}
+
+	return nil
 }
 
 func genupd(cmd *cobra.Command, args []string) error {
@@ -195,9 +269,7 @@ func genupd(cmd *cobra.Command, args []string) error {
 
 		addr := address.NewAddress(0, 0, stateInitCell.Hash())
 
-		link := fmt.Sprintf("ton://transfer/%v?amount=50000000&init=%v", addr.String(), base64.RawURLEncoding.EncodeToString(stateInitCell.ToBOC()))
-
-		fmt.Printf("collection address: %v\n\ndeploy link:\n%v\n", addr.String(), link)
+		sendMessage(addr.String(), "50000000", nil, stateInitCell)
 	case "update":
 		if len(args) != 1+1 {
 			return errors.New("not enough args to create an 'update' body; need: collection")
@@ -235,9 +307,7 @@ func genupd(cmd *cobra.Command, args []string) error {
 			MustStoreRef(cell.BeginCell().MustStoreRef(types.MakeMerkleProof(oldUpd)).MustStoreRef(types.MakeMerkleProof(newUpd)).EndCell()).
 			EndCell()
 
-		link := fmt.Sprintf("ton://transfer/%v?amount=150000000&bin=%v", args[1], base64.RawURLEncoding.EncodeToString(bodyCell.ToBOC()))
-
-		fmt.Printf("update link:\n%v\n", link)
+		sendMessage(args[1], "150000000", bodyCell, nil)
 	}
 
 	return nil
