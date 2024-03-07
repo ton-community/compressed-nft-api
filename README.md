@@ -20,7 +20,7 @@
 14. Run `./server` in a way that prevents it from closing when your SSH (or any other kind of session) closes. You can do that using the [screen](https://www.gnu.org/software/screen/manual/screen.html) utility for example. Make sure that the assigned `PORT` is visible to the public Internet on some endpoint
 15. Navigate to `api-uri + '/admin/rediscover'`. Use your `ADMIN_*` credentials. If all went well, you should see the string `ok` and a file should appear under `DATA_DIR + '/upd/1.json'` (perhaps after some time if the number of items is large)
 16. Run `./ctl genupd path-to-update-file collection-owner collection-meta item-meta-prefix royalty-base royalty-factor royalty-recipient api-uri-including-v1` where `path-to-update-file` is the path to the file mentioned in step 15, `collection-owner` is the intended collection owner, `collection-meta` is the full URI to collection metadata file, `item-meta-prefix` is the common item metadata file prefix (for example, if your item 0 has its metadata hosted at `https://example.com/0.json`, then you should use `https://example.com/` here), `royalty-base` is the royalty numerator, `royalty-factor` is the royalty denominator (base = 1 and factor = 100 give 1% royalty), `royalty-recipient` is the address which will get royalties (you can just use the `collection-owner` here), and `api-uri-including-v1` is the publicly visible API URI with the `/v1` postfix (so if you used `https://example.com/admin/rediscover` to create the update file, you should put `https://example.com/v1` here. Using `localhost` or similar here will not allow users to claim your items, but for testing purposes that's fine)
-17. Invoke the `ton://` deeplink that appears
+17. Invoke the `ton://` deeplink that appears or use TON Connect link or QR code
 18. Navigate to `api-uri + '/admin/setaddr/' + collection-address` using the address that you saw after step 16
 19. Wait for a `commited state` message in `server` logs
 20. Done
@@ -32,7 +32,7 @@
 3. Navigate to `api-uri + '/admin/rediscover'`
 4. Locate the newly created update file under `DATA_DIR + '/upd'`. If your latest applied update was update 1 (as after setup), then the newly created one will have the name `2.json`
 5. Run `./ctl genupd path-to-update-file collection-address` where `path-to-update-file` is the path to the file mentioned in step 4, and `collection-address` is the address of the deployed collection
-6. Invoke the `ton://` deeplink that appears
+6. Invoke the `ton://` deeplink that appears or use TON Connect link or QR code
 7. Wait for a `commited state` message in `server` logs
 8. Done
 
