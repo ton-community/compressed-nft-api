@@ -11,10 +11,11 @@ import (
 type ItemMetadata struct {
 	Owner             *address.Address `json:"owner"`
 	IndividualContent *cell.Cell       `json:"individual_content"`
+	Authority         *address.Address `json:"authority"`
 }
 
 func (d *ItemMetadata) ToCell() *cell.Cell {
-	return cell.BeginCell().MustStoreAddr(d.Owner.Address).MustStoreRef(d.IndividualContent).EndCell()
+	return cell.BeginCell().MustStoreAddr(d.Owner.Address).MustStoreRef(d.IndividualContent).MustStoreAddr(d.Authority.Address).EndCell()
 }
 
 func (d *ItemMetadata) ToNode() types.Node {

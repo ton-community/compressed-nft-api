@@ -6,6 +6,7 @@ import (
 
 	"github.com/jackc/pgx/v5/pgxpool"
 	myaddr "github.com/ton-community/compressed-nft-api/address"
+	"github.com/ton-community/compressed-nft-api/config"
 	"github.com/ton-community/compressed-nft-api/data"
 	"github.com/ton-community/compressed-nft-api/provider"
 	"github.com/xssnick/tonutils-go/address"
@@ -37,6 +38,7 @@ func makeMetadata(index uint64, owner *address.Address) *data.ItemMetadata {
 	return &data.ItemMetadata{
 		Owner:             &myaddr.Address{Address: owner},
 		IndividualContent: cell.BeginCell().MustStoreStringSnake(strconv.FormatUint(index, 10) + ".json").EndCell(),
+		Authority:         &myaddr.Address{Address: config.Config.Authority},
 	}
 }
 
